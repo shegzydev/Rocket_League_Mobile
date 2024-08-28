@@ -135,6 +135,13 @@
       },
       "url": "https://packages.unity.com"
     },
+    "net.tomweiland.riptide": {
+      "version": "https://github.com/RiptideNetworking/Riptide.git?path=/Packages/Core#2.2.0",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "3282893aa754784596b5978b64227844ed02bc50"
+    },
     "com.unity.modules.ai": {
       "version": "1.0.0",
       "depth": 0,
