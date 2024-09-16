@@ -28,17 +28,17 @@ public class PhotonConnector : MonoBehaviourPunCallbacks
 
     void Start()
     {
-        if (!PhotonNetwork.IsConnectedAndReady)
-        {
-            Debug.Log("Attempting...");
-            TriggerConnection();
-        }
+        StartCoroutine(TriggerConnection());
     }
 
-    void TriggerConnection()
+    IEnumerator TriggerConnection()
     {
-        Debug.Log("trigger");
-        PhotonNetwork.ConnectUsingSettings();
+        while (true)
+        {
+            yield return new WaitWhile(() => PhotonNetwork.IsConnected);
+            Debug.Log("trigger");
+            PhotonNetwork.ConnectUsingSettings();
+        }
     }
 
     public override void OnConnectedToMaster()
@@ -54,8 +54,8 @@ public class PhotonConnector : MonoBehaviourPunCallbacks
 
     public override void OnDisconnected(DisconnectCause cause)
     {
-        Debug.Log(cause.ToString());
-        PhotonNetwork.Reconnect();
+        //Debug.Log(cause.ToString());
+        //PhotonNetwork.Reconnect();
     }
 
     void Update()

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83128a6c15c5254499b9c78e8128dfcd, type: 3}
+  m_Name: Minigun_lvl_1
+  m_EditorClassIdentifier: 
+  fireRate: 20
+  damage: 0.5
+  range: 30
+  accuracy: 0.9
+  reloadTime: 5
+  catridgeSize: 120
+  fireSound: {fileID: 8300000, guid: f8bbe3ac83a0ef9489593a11bbb75c03, type: 3}
+  reloadSound: {fileID: 0}
+  muzzleFlash: {fileID: 19800004, guid: b0a227fc2e558f241b1c747820ccc361, type: 3}

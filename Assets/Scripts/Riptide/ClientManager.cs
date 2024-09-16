@@ -5,6 +5,8 @@ using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.Security.Cryptography;
+using System;
 
 public enum MessageId : ushort
 {
@@ -16,7 +18,11 @@ public enum MessageId : ushort
     SendInput = 6,
     UpdateCar = 7,
     RemoveCar = 8,
-    addedCar = 9
+    addedCar = 9,
+    addBall,
+
+    rpc_C,
+    rpc_S
 }
 
 public class ClientManager : MonoBehaviour
@@ -51,7 +57,8 @@ public class ClientManager : MonoBehaviour
         client.Disconnected += OnDisconnected;
         client.ConnectionFailed += OnConnectionFailed;
 
-        client.Connect("127.0.0.1:7777"); // Connect to the server at localhost
+        //client.Connect("127.0.0.1:7777"); // Connect to the server at localhost
+        client.Connect("192.168.88.146:7777"); // Connect to the server at localhost
         Debug.Log("Client connecting...");
     }
 
@@ -64,10 +71,9 @@ public class ClientManager : MonoBehaviour
     {
         Debug.Log("Connected to server.");
         connected = true;
-        client.TimeoutTime = 240000;
 
         SendMessageToServer(MessageId.Initialize, "Shegzy");
-        SendPingRequest();
+        StartCoroutine(SendPingRequest());
     }
 
     private void OnDisconnected(object sender, System.EventArgs e)
@@ -82,16 +88,21 @@ public class ClientManager : MonoBehaviour
         Join.interactable = true;
     }
 
-    public void update()
+    public void Update()
     {
         client?.Update(); // Process incoming messages
     }
 
-    private void SendPingRequest()
+    private IEnumerator SendPingRequest()
     {
-        Message message = Message.Create(MessageSendMode.Unreliable, MessageId.PingRequest);
-        message.Add(Time.time); // Add the current time to the message
-        client.Send(message);
+        while (true)
+        {
+            yield return new WaitForSeconds(2);
+
+            Message message = Message.Create(MessageSendMode.Reliable, MessageId.PingRequest);
+            message.Add(Time.time); // Add the current time to the message
+            client.Send(message);
+        }
     }
 
     public void SendMessageToServer(MessageId id, object data)
@@ -113,8 +124,7 @@ public class ClientManager : MonoBehaviour
         float sentTime = message.GetFloat();
         instance.ping = (Time.time - sentTime) * 1000.0f; // Ping in milliseconds
 
-        instance.pingtext.text = instance.ping + " ms";
-        instance.SendPingRequest();
+        instance.pingtext.text = $"{instance.ping} ms_________{1 / Time.smoothDeltaTime}";
     }
 
     //Message Reception
@@ -129,16 +139,29 @@ public class ClientManager : MonoBehaviour
     private static void Instantiate(Message message)
     {
         var id = (ushort)Utility.Deserialize(message);
+
         GameManager.instance.CreateCar(id);
         instance.SendMessageToServer(MessageId.addedCar, id);
     }
 
-    [MessageHandler((ushort)MessageId.UpdateCar)]
-    private static void UpdateCar(Message message)
+    [MessageHandler((ushort)MessageId.addBall)]
+    private static void addBall(Message message)
     {
-        if (GameManager.instance.ripViews == null || GameManager.instance.ripViews.Count == 0) return;
-        var state = (State)Utility.Deserialize(message);
-        GameManager.instance.ripViews?.ForEach(x => x.car?.UpdateCar(state));
+        GameManager.instance.CreateBall();
+    }
+
+    [MessageHandler((ushort)MessageId.rpc_S)]
+    private static void HandleRPC(Message message)
+    {
+        var input = Utility.Deserialize(message) as rpcData;
+
+        foreach (var entry in GameManager.instance.tideViews)
+        {
+            if (entry.ID == input.rpcID)
+            {
+                entry.CallRPC(input.methodName, input.toSend);
+            }
+        }
     }
 
     [MessageHandler((ushort)MessageId.RemoveCar)]
@@ -154,6 +177,7 @@ public class ClientManager : MonoBehaviour
 }
 
 public class Utility
+
 {
     public static object Deserialize(Message m)
     {
@@ -165,5 +189,26 @@ public class Utility
             o = formatter.Deserialize(ms);
         }
         return o;
+    }
+
+    public static object Deserialize(byte[] m)
+    {
+        object o = null;
+        BinaryFormatter formatter = new BinaryFormatter();
+        using (MemoryStream ms = new MemoryStream(m))
+        {
+            o = formatter.Deserialize(ms);
+        }
+        return o;
+    }
+
+    public static byte[] Serialize(object m)
+    {
+        BinaryFormatter formatter = new BinaryFormatter();
+        using (MemoryStream ms = new MemoryStream())
+        {
+            formatter.Serialize(ms, m);
+            return ms.ToArray(); ;
+        }
     }
 }

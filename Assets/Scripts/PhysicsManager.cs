@@ -1,26 +1,21 @@
+using ExitGames.Client.Photon;
 using Photon.Pun;
+using Photon.Realtime;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.InteropServices.WindowsRuntime;
 using UnityEngine;
-
-public interface PhysicsObject
-{
-    public GameObject attached { get; }
-    public void preSim(int framenumber, int correctionFrames = -1);
-    public void postSim(int framenumber);
-}
 
 public class PhysicsManager : MonoBehaviour
 {
     int frameNumber;
-    double accum = 0;
-    float timeStep = 1 / 60f;
 
-    public List<PhysicsObject> physicsObjects;
+    List<NetObject> netObjects;
+    public List<Networker> networkers;
 
-    int correctionFrames;
+    public static int rollFrames = 0;
+    public static int startFrame = 0;
 
-    int step;
     private void Awake()
     {
         instance = this;
@@ -28,88 +23,75 @@ public class PhysicsManager : MonoBehaviour
 
     private void Start()
     {
-        Physics.simulationMode = SimulationMode.Script;
-        physicsObjects = new List<PhysicsObject>();
+        networkers = new List<Networker>();
+        netObjects = new List<NetObject>();
+
+        StartCoroutine(postFixedUpdate());
     }
 
     void Update()
     {
-        tryUpdatePhysics();
+
     }
 
-    void tryUpdatePhysics()
+    private void FixedUpdate()
     {
-        if (Physics.simulationMode != SimulationMode.Script) return;
 
-        
-        accum += Time.deltaTime;
-        while (accum >= timeStep)
+    }
+
+    IEnumerator postFixedUpdate()
+    {
+        while (true)
         {
-            //Left Over
-
-            for (int i = 0; i < correctionFrames; i++)
-            {
-                foreach (var p in physicsObjects)
-                {
-                    if (p != null || p.attached != null)
-                    {
-                        p.preSim(frameNumber, i);
-                    }
-                }
-                Physics.Simulate(timeStep);
-            }
-            correctionFrames = 0;
-
-            //Real Physics
-
-            step++;
-            if (step % 6 == 0)
-            {
-                ServerManager.instance?.update();
-            }
-            ClientManager.instance?.update();
-
-
-            foreach (var p in physicsObjects)
-            {
-                if (p != null || p.attached != null)
-                {
-                    p.preSim(frameNumber);
-                }
-            }
-
-            Physics.Simulate(timeStep);
-
-            foreach (var p in physicsObjects)
-            {
-                if (p != null || p.attached != null)
-                {
-                    p.postSim(frameNumber);
-                }
-            }
-
-            accum -= timeStep;
+            yield return new WaitForFixedUpdate();
             frameNumber++;
         }
     }
 
-    public static void addQueue(int lag)
-    {
-        instance.correctionFrames = lag;
-    }
 
     static PhysicsManager instance;
-    public static void AddObject(PhysicsObject newObject)
-    {
-        if (instance == null) instance = new GameObject("Physics_Dude").AddComponent<PhysicsManager>();
-
-        instance.physicsObjects.Add(newObject);
-    }
-
-    public static void Remove(PhysicsObject newObject)
-    {
-        instance.physicsObjects.Remove(newObject);
-    }
-
+    public static PhysicsManager Instance => instance;
     public static int currentFrame => instance.frameNumber;
+    public static void Add(Networker netObject)
+    {
+        if (instance == null) instance.networkers = new List<Networker>();
+        instance.networkers.Add(netObject);
+    }
+    public static void Remove(Networker netObject)
+    {
+        instance.networkers.Remove(netObject);
+    }
+}
+
+[System.Serializable]
+public class gameState
+{
+    int frame;
+    SnapShot[] snapShots;
+
+    public gameState(int size)
+    {
+        frame = -1;
+        snapShots = new SnapShot[size + 1];
+    }
+
+    public SnapShot getSnap(int index)
+    {
+        return snapShots[index];
+    }
+
+    public int getFrame()
+    {
+        return frame;
+    }
+
+    public void setSnap(int index, SnapShot snap)
+    {
+        snapShots[index] = snap;
+    }
+    public gameState setFrame(int f)
+    {
+        frame = f;
+        return this;
+    }
 }

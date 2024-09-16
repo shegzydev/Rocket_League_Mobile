@@ -1,20 +1,21 @@
 using Riptide;
 using Riptide.Transports.Udp;
 using Riptide.Utils;
+using System;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 using UnityEngine.UI;
 
-
 public class ServerManager : MonoBehaviour
 {
     public static ServerManager instance;
     private Server server;
-
     int clientCount;
 
     [SerializeField] Button Host;
+
+    [SerializeField] Text pingtext;
 
     private void Awake()
     {
@@ -40,6 +41,8 @@ public class ServerManager : MonoBehaviour
         server.ConnectionFailed += Server_ConnectionFailed;
 
         server.Start(7777, 10); // Port 7777, maximum 10 clients
+
+        GameManager.instance.CreateBall();
     }
 
     private void Server_ConnectionFailed(object sender, ServerConnectionFailedEventArgs e)
@@ -59,11 +62,15 @@ public class ServerManager : MonoBehaviour
     {
         Debug.Log($"Client {e.Client.Id} connected.");
 
-        foreach (var dude in GameManager.instance.ripViews)
+        foreach (var dude in GameManager.instance.tideViews)
         {
+            if (dude.ID == 0) continue;
             BroadcastTo(e.Client.Id, MessageId.Instantiate, (ushort)dude.ID);
         }
+
+        BroadcastTo(e.Client.Id, MessageId.addBall, e.Client.Id);
         BroadcastMessage(MessageId.Instantiate, e.Client.Id);
+
         GameManager.instance.CreateCar(e.Client.Id);
     }
 
@@ -72,9 +79,11 @@ public class ServerManager : MonoBehaviour
         server?.Stop();
     }
 
-    public void update()
+    public void Update()
     {
         server?.Update(); // Process incoming messages
+
+        if (!ClientManager.instance.Active) pingtext.text = $"0ms________{1 / Time.smoothDeltaTime}";
     }
 
     public void BroadcastMessage(MessageId id, object data)
@@ -130,20 +139,35 @@ public class ServerManager : MonoBehaviour
         instance.server.Send(response, fromClientId);
     }
 
+    [MessageHandler((ushort)MessageId.rpc_C)]
+    private static void HandleRPC(ushort fromClientId, Message message)
+    {
+        var input = Utility.Deserialize(message) as rpcData;
+
+        foreach (var entry in GameManager.instance.tideViews)
+        {
+            if (entry.ID == input.rpcID)
+            {
+                entry.CallRPC(input.methodName, input.toSend);
+            }
+        }
+    }
+
     [MessageHandler((ushort)MessageId.addedCar)]
     private static void addedCar(ushort fromClientId, Message message)
     {
         var id = (ushort)Utility.Deserialize(message);
-        foreach (var entry in GameManager.instance.ripViews)
+        foreach (var entry in GameManager.instance.tideViews)
         {
-            if(entry.ID == id)
+            if (entry.ID == id)
             {
-                entry.car.OpenServerUpdate();
+                entry.OpenServerUpdate();
                 break;
             }
         }
     }
 
+    /**
     [MessageHandler((ushort)MessageId.SendInput)]
     private static void HandleInput(ushort fromClientId, Message message)
     {
@@ -157,5 +181,6 @@ public class ServerManager : MonoBehaviour
         }
 
     }
+    **/
     //public bool connected => server.
 }

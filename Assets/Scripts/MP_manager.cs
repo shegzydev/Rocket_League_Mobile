@@ -15,6 +15,7 @@ public class MP_manager : MonoBehaviourPunCallbacks, IPunObservable
     List<Button> joinList;
 
     [SerializeField] GameObject car;
+    [SerializeField] GameObject ball;
     void Start()
     {
         joinList = new List<Button>();
@@ -79,8 +80,8 @@ public class MP_manager : MonoBehaviourPunCallbacks, IPunObservable
     public override void OnJoinedRoom()
     {
         Debug.Log($"Joined room {PhotonNetwork.CurrentRoom.Name}!");
-        if (!PhotonConnector.isMaster)
-            CreateCar();
+        //if (!PhotonConnector.isMaster)
+        CreateCar();
     }
 
     public override void OnPlayerEnteredRoom(Player newPlayer)
@@ -94,6 +95,11 @@ public class MP_manager : MonoBehaviourPunCallbacks, IPunObservable
     }
 
     public void CreateCar()
+    {
+        GameObject myCar = PhotonNetwork.Instantiate(car.name, car.transform.position, car.transform.rotation);
+    }
+
+    public void CreateBall()
     {
         GameObject myCar = PhotonNetwork.Instantiate(car.name, car.transform.position, car.transform.rotation);
     }
